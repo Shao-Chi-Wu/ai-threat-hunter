@@ -13,7 +13,7 @@ from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 
-st.set_page_config(page_title="AI 自動化威脅偵測平台", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="AI Threat Hunter", page_icon="🛡️", layout="wide")
 
 # 側邊欄設定 (API Key 輸入與系統狀態)
 with st.sidebar:
