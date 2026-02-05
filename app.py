@@ -159,37 +159,46 @@ if user_input := st.chat_input("請輸入指令 (例如: 分析 IP 1.2.3.4 的�
         message_placeholder.markdown("🤖 AI 正在分析威脅情報與 SOP...")
         
         try:
-            # 呼叫 Agent (記得要把 chat_history 截斷，避免重複)
+            # 呼叫 Agent (記得要把 chat_history 截斷)
             response = agent_executor.invoke({
                 "input": user_input,
                 "chat_history": st.session_state.messages[:-1]
             })
             
             raw_output = response["output"]
-            result_text = ""
+            
+            # --- 核心解析邏輯修正 (針對混合型別列表) ---
+            
+            def parse_gemini_output(content):
+                # 1. 如果是純字串，先嘗試用 AST 把它還原成 List/Dict
+                if isinstance(content, str):
+                    # 如果看起來像 List 或 Dict，才去解析
+                    if content.strip().startswith("[") or content.strip().startswith("{"):
+                        try:
+                            # 這是最關鍵的一步：把 "[{'...'}, '...']" 字串變成真正的 Python List
+                            content = ast.literal_eval(content)
+                        except:
+                            pass # 解析失敗就當作普通字串處理
 
-            # === 核心修正邏輯開始 ===
+                # 2. 如果是 List (無論是原本就是，還是剛解析出來的)
+                if isinstance(content, list):
+                    final_text = ""
+                    for item in content:
+                        if isinstance(item, dict):
+                            # 如果是字典，抓 text 欄位
+                            final_text += item.get('text', '')
+                        elif isinstance(item, str):
+                            # ⚠️ 修正點：如果是字串，直接接上去！
+                            final_text += item
+                    return final_text
+                
+                # 3. 如果都不是，它就是單純的 String
+                return str(content)
+
+            # 執行解析
+            result_text = parse_gemini_output(raw_output)
             
-            # 狀況 A: 它真的是一個 List (上次遇到的狀況)
-            if isinstance(raw_output, list):
-                result_text = "".join([item.get('text', '') for item in raw_output if 'text' in item])
-            
-            # 狀況 B: 它是 String，但長得像 List (這次的 Bug)
-            elif isinstance(raw_output, str):
-                # 如果開頭是 '[' 且裡面包含 'type'，我們就嘗試把它變回 List
-                if raw_output.strip().startswith("[") and "'type': 'text'" in raw_output:
-                    try:
-                        # 這一行會把 "字串" 變回 "真正的 List"
-                        parsed_list = ast.literal_eval(raw_output)
-                        result_text = "".join([item.get('text', '') for item in parsed_list if 'text' in item])
-                    except:
-                        # 萬一解析失敗，就直接顯示原始文字
-                        result_text = raw_output
-                else:
-                    # 狀況 C: 它就是普通的文字 (正常狀況)
-                    result_text = raw_output
-            
-            # === 核心修正邏輯結束 ===
+            # ---------------------------------------
 
             # 顯示結果
             message_placeholder.markdown(result_text)
