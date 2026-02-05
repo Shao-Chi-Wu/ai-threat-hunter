@@ -2,8 +2,8 @@ import streamlit as st
 import os
 import time
 import ast
-from dotenv import load_dotenv
 
+from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_text_splitters import CharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
